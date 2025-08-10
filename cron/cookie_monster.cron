@@ -1,0 +1,1 @@
+1 0 * * 1 echo "$(date) - Posting cookies from cron as user $(whoami)" >> /app/out/cron.log && PYTHONPATH=/app python3 /app/src/utils.py post_cookies

@@ -1,0 +1,6 @@
+beautifulsoup4==4.13.4
+dandroid126-logger @ git+https://github.com/dandroid126/logger@00151aac1802caab2026a0fd2d49510504108297
+discord.py==2.3.2
+python-dotenv==1.1.1
+requests==2.32.4
+python-dateutil==2.9.0.post0
