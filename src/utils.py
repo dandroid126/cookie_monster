@@ -14,13 +14,20 @@ from src.db.week.week_record import WeekRecord
 
 TAG = "Utils"
 
-BASE_URL: Final = "https://crumblcookies.com/"
-BUILD_ID_REPLACE: Final = "{{build_id}}"
-URL: Final = f"https://crumblcookies.com/_next/data/{BUILD_ID_REPLACE}/en-US.json"
-URL_SCRIPT_ID: Final = "__NEXT_DATA__"
-BUILD_ID: Final = "buildId"
+_BASE_URL: Final = "https://crumblcookies.com/"
+_BUILD_ID_REPLACE: Final = "{{build_id}}"
+_URL: Final = f"https://crumblcookies.com/_next/data/{_BUILD_ID_REPLACE}/en-US.json"
+_URL_SCRIPT_ID: Final = "__NEXT_DATA__"
+_BUILD_ID: Final = "buildId"
 
 def get_week() -> str:
+    """
+    Get the current week
+
+    Returns:
+        str: The current week
+    """
+
     # We are using this to cache the cookies by week.
     # Cookies are posted every Monday at midnight UTC.
     # Coincidentally, Monday is the first day of the week when using %W, so we don't need to anything.
@@ -28,14 +35,30 @@ def get_week() -> str:
 
 
 def get_cookies_url() -> str:
-    r = requests.get(BASE_URL)
+    """
+    Get the url for the cookies
+
+    Returns:
+        str: The url for the cookies
+    """
+
+    r = requests.get(_BASE_URL)
     soup = BeautifulSoup(r.text, "html.parser")
-    next_data = soup.find(id=URL_SCRIPT_ID, type="application/json")
-    build_id = json.loads(str(next_data.contents[0]))[BUILD_ID]
-    return URL.replace(BUILD_ID_REPLACE, build_id)
+    next_data = soup.find(id=_URL_SCRIPT_ID, type="application/json")
+    build_id = json.loads(str(next_data.contents[0]))[_BUILD_ID]
+    return _URL.replace(_BUILD_ID_REPLACE, build_id)
 
 
 def get_cookies(week_dao: WeekDao = week_dao) -> list[dict[str, str]]:
+    """
+    Get the cookies for the week
+
+    Args: week_dao: The week dao. If none is provided, the default singleton will be used
+
+    Returns:
+        list[dict[str, str]]: The cookie details
+    """
+
     week = get_week()
     week_record = week_dao.get_week_record_by_week(week)
     if week_record is None:
@@ -52,14 +75,28 @@ def get_cookies(week_dao: WeekDao = week_dao) -> list[dict[str, str]]:
 
 
 def create_post_cookies_job() -> JobRecord:
+    """
+    Create a job to post the cookies
+
+    Returns:
+        JobRecord: The job
+    """
     incomplete_post_cookie_jobs = job_dao.get_incomplete_jobs_by_type(JobType.POST_COOKIES)
     if len(incomplete_post_cookie_jobs) > 0:
         LOGGER.w(TAG, f"Job already exists: {len(incomplete_post_cookie_jobs)}")
         return incomplete_post_cookie_jobs[0]
     return job_dao.create_job(JobType.POST_COOKIES)
 
+def clear_cache() -> bool:
+    week = get_week()
+    deleted_week = week_dao.delete_week_record_by_week(week)
+    if deleted_week is not None:
+        LOGGER.w(TAG, f"{deleted_week} was deleted")
+        return True
+    return False
 
 if __name__ == "__main__":
+    # If this script is run as main, then it will create a job
     if len(sys.argv) < 2:
         LOGGER.e(TAG, "Usage: python utils.py <command>")
         exit(1)

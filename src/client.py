@@ -43,6 +43,18 @@ async def set_channel(interaction: discord.Interaction, channel: discord.TextCha
     await interaction.response.send_message(f"Cookie notifications will be sent to {channel.mention}" , ephemeral=True)
 
 @tree.command(
+    name="clear_cache",
+    description="Clears the cache for this week. For if cookies got cached before Crumbl updated their cookies.",
+)
+@app_commands.default_permissions(administrator=True)
+async def clear_cache(interaction: discord.Interaction):
+    success = utils.clear_cache()
+    if success:
+        await interaction.response.send_message("Cookie cache was cleared for this week.", ephemeral=True)
+    else:
+        await interaction.response.send_message("Cookies have not yet been cached for this week.", ephemeral=True)
+
+@tree.command(
     name="get_cookies",
     description="Get this week's cookies"
 )
@@ -77,6 +89,15 @@ async def on_guild_join(guild: discord.Guild):
     LOGGER.d(TAG, f"on_guild_join: {guild}")
     owner = client.get_user(guild.owner_id)
     await owner.send(f"Thanks for adding me to {guild.name}! To setup automatic cookie notifications, run `/set_channel <#channel_id>` in any channel in the guild.")
+
+@client.event
+async def on_guild_remove(guild: discord.Guild):
+    await tree.sync()
+    LOGGER.d(TAG, f"on_guild_remove: {guild}")
+    deleted_guild_record = guild_channel_association_dao.delete_guild_channel_association(guild.id)
+    if deleted_guild_record is None:
+        LOGGER.w(TAG, f"removed guild channel association: {deleted_guild_record}")
+
 
 if __name__ == "__main__":
     client.run(TOKEN)

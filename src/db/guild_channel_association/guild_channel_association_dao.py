@@ -41,4 +41,14 @@ class GuildChannelAssociationDao:
         val = self.db_manager.cursor.execute(query).fetchall()
         return [GuildChannelAssociationRecord(int(val[0]), int(val[1])) for val in val]
 
+    def delete_guild_channel_association(self, guild_id: int) -> Optional[GuildChannelAssociationRecord]:
+        query = "DELETE FROM guild_channel_association WHERE guild_id=? RETURNING *"
+        params = (guild_id,)
+        LOGGER.i(TAG, f"delete_guild_channel_association(): executing {query} with params {params}")
+        val = self.db_manager.cursor.execute(query, params).fetchone()
+        self.db_manager.connection.commit()
+        if val is not None:
+            return GuildChannelAssociationRecord(int(val[0]), int(val[1]))
+        return None
+
 guild_channel_association_dao = GuildChannelAssociationDao(db_manager)

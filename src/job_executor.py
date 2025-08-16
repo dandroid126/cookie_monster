@@ -15,8 +15,6 @@ from src.signal_util import signal_util
 
 TAG = "JobExecutor"
 SLEEP_DELAY = 60 # One minute
-# TODO: Delete this. This is for testing.
-# SLEEP_DELAY = 5 # One minute
 
 class JobExecutor:
     def __init__(self, client: Client):
@@ -25,15 +23,27 @@ class JobExecutor:
         self.start()
 
     def start(self):
+        """
+        Start the job executor
+        """
         self.is_running = True
         loop = asyncio.get_running_loop()
         thread = threading.Thread(target=self._loop, args=(loop, ))
         thread.start()
 
     def stop(self):
+        """
+        Stop the job executor
+        """
         self.is_running = False
 
     def _loop(self, loop):
+        """
+        Main loop for the job executor
+
+        Args:
+            loop: The asyncio event loop
+        """
         db_manager = DbManager(constants.DB_PATH)
         job_dao = JobDao(db_manager)
         week_dao = WeekDao(db_manager)
@@ -64,6 +74,12 @@ class JobExecutor:
 
     @staticmethod
     def clean_up_in_progress_jobs(job_dao: JobDao):
+        """
+        Clean up in progress jobs
+
+        Args:
+            job_dao: The job dao
+        """
         jobs = job_dao.get_all_in_progress_jobs()
         for job in jobs:
             job_dao.update_job_state(job.id, JobState.ABORTED)
