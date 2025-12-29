@@ -1,6 +1,7 @@
-beautifulsoup4==4.13.4
+beautifulsoup4==4.14.3
 dandroid126-utils @ git+https://github.com/dandroid126/dandroid126_utils@bd03984aea8f144ab27daa81a3c56a17b9398ff4
-discord.py==2.5.2
-python-dotenv==1.1.1
-requests==2.32.4
+discord.py==2.6.4
+python-dotenv==1.2.1
+pytz==2025.2
+requests==2.32.5
 python-dateutil==2.9.0.post0

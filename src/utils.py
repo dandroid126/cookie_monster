@@ -1,6 +1,6 @@
 import json
 import sys
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import Final
 
 import requests
@@ -11,6 +11,7 @@ from src.db.job.job_dao import job_dao
 from src.db.job.job_record import JobRecord, JobType
 from src.db.week.week_dao import WeekDao, week_dao
 from src.db.week.week_record import WeekRecord
+from src.env_util import env_util
 
 TAG = "Utils"
 
@@ -29,9 +30,23 @@ def get_week() -> str:
     """
 
     # We are using this to cache the cookies by week.
-    # Cookies are posted every Monday at midnight UTC.
-    # Coincidentally, Monday is the first day of the week when using %W, so we don't need to anything.
-    return datetime.now(timezone.utc).strftime("%Y-%W")
+
+    time = env_util.TIME.split(":")
+    now = datetime.now(env_util.TIMEZONE)
+    reset_time = now.replace(hour=int(time[0]), minute=int(time[1]), second=0, microsecond=0)
+    weekday = now.weekday()
+    time = now.time()
+    LOGGER.i(TAG, f"Current weekday: {weekday}, time: {time}")
+    isocalendar = now.isocalendar()
+
+    # If the current time is after the time specified in the environment file, then use next week's week number
+    week_number = now.isocalendar()[1] - 1 if weekday < env_util.DAY_OF_WEEK or (weekday == env_util.DAY_OF_WEEK and now.time() < reset_time.time()) else now.isocalendar()[1]
+
+    # make sure we aren't going over 52 weeks.
+    carry_out = week_number // 52
+    week_number = (week_number % 52) + 1
+    LOGGER.i(TAG, f"week number: {week_number}")
+    return f"{isocalendar[0] + carry_out}-{week_number}"
 
 
 def get_cookies_url() -> str:
@@ -65,7 +80,7 @@ def get_cookies(week_dao: WeekDao = week_dao) -> list[dict[str, str]]:
         LOGGER.i(TAG, "Fetching cookies from website")
         url = get_cookies_url()
         r = requests.get(url)
-        cookies = r.json()["pageProps"]["products"]["cookies"]
+        cookies = r.json()["pageProps"]["products"]["rotatingMenu"]["desserts"]
         week_record = WeekRecord(week, url, cookies)
         week_dao.insert_or_update_week_record(week_record)
     else:

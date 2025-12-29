@@ -1,23 +1,15 @@
-import os
 from typing import Optional
 
 import discord
 from discord import app_commands
-from dotenv import load_dotenv
 
 from src import utils
 from src.constants import LOGGER
 from src.db.guild_channel_association.guild_channel_association_dao import guild_channel_association_dao
-from src.errors import LoggedRuntimeError
+from src.env_util import env_util
 from src.job_executor import JobExecutor
 
 TAG = "client"
-
-load_dotenv()
-TOKEN = os.getenv('DISCORD_TOKEN')
-
-if TOKEN is None:
-    raise LoggedRuntimeError(TAG, "TOKEN not found. Check that .env file exists in src dir and that its contents are correct")
 
 intents = discord.Intents.default()
 intents.members = True
@@ -100,4 +92,4 @@ async def on_guild_remove(guild: discord.Guild):
 
 
 if __name__ == "__main__":
-    client.run(TOKEN)
+    client.run(env_util.TOKEN)

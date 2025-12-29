@@ -1,6 +1,6 @@
 FROM docker.io/python:3.11-alpine3.18
 
-ENV TZ="UTC"
+ENV TZ="US/Pacific"
 WORKDIR /app
 RUN adduser -D python
 RUN install -d -m 700 -o python -g python out
