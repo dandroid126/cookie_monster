@@ -80,7 +80,8 @@ def get_cookies(week_dao: WeekDao = week_dao) -> list[dict[str, str]]:
         LOGGER.i(TAG, "Fetching cookies from website")
         url = get_cookies_url()
         r = requests.get(url)
-        cookies = r.json()["pageProps"]["products"]["rotatingMenu"]["desserts"]
+        items = r.json()["pageProps"]["products"]["rotatingMenu"]["items"]
+        cookies = [item['dessert'] for item in items]
         week_record = WeekRecord(week, url, cookies)
         week_dao.insert_or_update_week_record(week_record)
     else:
