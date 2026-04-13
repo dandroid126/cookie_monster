@@ -1,7 +1,10 @@
+import os
 from typing import Optional
 
+import aiohttp
 import discord
 from discord import app_commands
+from discord.ext import tasks
 
 from src import utils
 from src.constants import LOGGER
@@ -59,6 +62,22 @@ async def get_cookies(interaction: discord.Interaction):
         await client.get_channel(channel_id).send(message)
     await interaction.followup.send("Done", ephemeral=True)
 
+UPTIME_KUMA_PUSH_URL = os.getenv('UPTIME_KUMA_PUSH_URL')
+
+
+@tasks.loop(seconds=60)
+async def heartbeat():
+    if UPTIME_KUMA_PUSH_URL and client.is_ready() and not client.is_closed():
+        if job_executor is not None and not job_executor.healthy:
+            LOGGER.w(TAG, "heartbeat:: skipping push because job_executor is unhealthy")
+            return
+        try:
+            async with aiohttp.ClientSession() as session:
+                await session.get(UPTIME_KUMA_PUSH_URL)
+        except Exception as e:
+            LOGGER.w(TAG, f"heartbeat:: failed to push to Uptime Kuma: {e}")
+
+
 @client.event
 async def on_ready():
     LOGGER.d(TAG, "on_ready:")
@@ -74,6 +93,8 @@ async def on_ready():
         # If the job executor is already set, skip setting it again
         # This happens in the case of a reconnect
         LOGGER.d(TAG, "on_ready: job_executor is already started")
+    if not heartbeat.is_running():
+        heartbeat.start()
 
 @client.event
 async def on_guild_join(guild: discord.Guild):

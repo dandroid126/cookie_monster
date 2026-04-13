@@ -19,6 +19,7 @@ SLEEP_DELAY = 60 # One minute
 class JobExecutor:
     def __init__(self, client: Client):
         self.is_running = False
+        self.healthy = True
         self.client = client
         self.start()
 
@@ -58,13 +59,20 @@ class JobExecutor:
                 # TODO: Each job should be its own class that knows how to execute.
                 # Have a parent class with an execute method. Each job type should be a child class.
                 if job.type == JobType.POST_COOKIES:
-                    cookies = utils.get_cookies(week_dao)
-                    guild_channel_associations = guild_channel_association_dao.get_all_guild_channel_associations()
-                    for guild_channel_association in guild_channel_associations:
-                        channel = self.client.get_channel(guild_channel_association.channel_id)
-                        for cookie in cookies:
-                            message = f'{cookie["name"].strip()} - {cookie["description"].strip()}\n{cookie["newAerialImage"].strip()}\n\n'
-                            asyncio.run_coroutine_threadsafe(channel.send(message), loop).result()
+                    try:
+                        cookies = utils.get_cookies(week_dao)
+                        guild_channel_associations = guild_channel_association_dao.get_all_guild_channel_associations()
+                        for guild_channel_association in guild_channel_associations:
+                            channel = self.client.get_channel(guild_channel_association.channel_id)
+                            for cookie in cookies:
+                                message = f'{cookie["name"].strip()} - {cookie["description"].strip()}\n{cookie["newAerialImage"].strip()}\n\n'
+                                asyncio.run_coroutine_threadsafe(channel.send(message), loop).result()
+                    except Exception as e:
+                        LOGGER.e(TAG, f"Failed to post cookies: {e}")
+                        self.healthy = False
+                        job_dao.update_job_state(job.id, JobState.ABORTED)
+                        job = job_dao.get_oldest_queued_job()
+                        continue
                 job_dao.update_job_state(job.id, JobState.COMPLETED)
                 job = job_dao.get_oldest_queued_job()
             LOGGER.d(TAG, "No jobs to process")
