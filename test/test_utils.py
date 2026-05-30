@@ -16,10 +16,11 @@ class TestUtils(unittest.TestCase):
         cookies = utils.get_cookies()
         self.assertTrue(len(cookies) > 0)
         for cookie in cookies:
-            assert cookie.get("name")
-            assert cookie.get("description")
-            assert cookie.get("newAerialImage")
-            assert not cookie.get("image")
+            assert cookie.cookieId
+            assert cookie.name
+            assert cookie.description
+            assert cookie.newAerialImage
+            assert cookie.week
 
     @patch('src.utils.datetime')
     def test_get_week_after_day(self, mock_datetime):

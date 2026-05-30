@@ -22,14 +22,20 @@ class TestWeekDao(unittest.TestCase):
     def test_get_week_record_by_week(self):
         week = utils.get_week()
         url = "url"
-        cookies = [{"key1": "value1"}, {"key2": "value2"}]
-        week_record = WeekRecord(week, url, cookies)
+        week_record = WeekRecord(week, url)
         self.week_dao.insert_or_update_week_record(week_record)
         week_record = self.week_dao.get_week_record_by_week(week)
         self.assertIsNotNone(week_record)
         self.assertEqual(week_record.week, week)
         self.assertEqual(week_record.url, url)
-        self.assertEqual(week_record.cookies, cookies)
+
+    def test_delete_week_record_by_week(self):
+        week = utils.get_week()
+        self.week_dao.insert_or_update_week_record(WeekRecord(week, "url"))
+        deleted = self.week_dao.delete_week_record_by_week(week)
+        self.assertIsNotNone(deleted)
+        self.assertEqual(deleted.week, week)
+        self.assertIsNone(self.week_dao.get_week_record_by_week(week))
 
 if __name__ == '__main__':
     unittest.main()

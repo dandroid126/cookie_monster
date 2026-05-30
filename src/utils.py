@@ -7,6 +7,8 @@ import requests
 from bs4 import BeautifulSoup
 
 from src.constants import LOGGER
+from src.db.cookie.cookie_dao import CookieDao, cookie_dao
+from src.db.cookie.cookie_record import CookieRecord
 from src.db.job.job_dao import job_dao
 from src.db.job.job_record import JobRecord, JobType
 from src.db.week.week_dao import WeekDao, week_dao
@@ -64,29 +66,33 @@ def get_cookies_url() -> str:
     return _URL.replace(_BUILD_ID_REPLACE, build_id)
 
 
-def get_cookies(week_dao: WeekDao = week_dao) -> list[dict[str, str]]:
+def get_cookies(week_dao: WeekDao = week_dao, cookie_dao: CookieDao = cookie_dao) -> list[CookieRecord]:
     """
     Get the cookies for the week
 
-    Args: week_dao: The week dao. If none is provided, the default singleton will be used
+    Args:
+        week_dao: The week dao. If none is provided, the default singleton will be used
+        cookie_dao: The cookie dao. If none is provided, the default singleton will be used
 
     Returns:
-        list[dict[str, str]]: The cookie details
+        list[CookieRecord]: The cookie details
     """
 
     week = get_week()
-    week_record = week_dao.get_week_record_by_week(week)
-    if week_record is None:
+    cookies = cookie_dao.get_cookies_by_week(week)
+    if not cookies:
         LOGGER.i(TAG, "Fetching cookies from website")
         url = get_cookies_url()
         r = requests.get(url)
         items = r.json()["pageProps"]["products"]["rotatingMenu"]["items"]
-        cookies = [item['dessert'] for item in items]
-        week_record = WeekRecord(week, url, cookies)
-        week_dao.insert_or_update_week_record(week_record)
+        cookies = [
+            CookieRecord(dessert["cookieId"], dessert["name"], dessert["description"], dessert["newAerialImage"], week)
+            for dessert in (item["dessert"] for item in items)
+        ]
+        week_dao.insert_or_update_week_record(WeekRecord(week, url))
+        cookie_dao.insert_cookies(cookies)
     else:
         LOGGER.i(TAG, "Using cached cookies")
-        cookies = week_record.cookies
     return cookies
 
 
@@ -105,9 +111,10 @@ def create_post_cookies_job() -> JobRecord:
 
 def clear_cache() -> bool:
     week = get_week()
+    deleted_cookies = cookie_dao.delete_cookies_by_week(week)
     deleted_week = week_dao.delete_week_record_by_week(week)
-    if deleted_week is not None:
-        LOGGER.w(TAG, f"{deleted_week} was deleted")
+    if deleted_cookies:
+        LOGGER.w(TAG, f"{len(deleted_cookies)} cookies and {deleted_week} were deleted")
         return True
     return False
 

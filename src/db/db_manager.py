@@ -1,3 +1,4 @@
+import json
 import sqlite3
 from sqlite3 import Error
 from typing import Final
@@ -46,7 +47,19 @@ CREATE_WEEK_TABLE: Final[str] = """
     )
 """
 
-DB_SCHEMA_VERSION: Final[int] = 1
+# A cookie can belong to multiple weeks, so this table has no primary key
+# (it relies on the implicit rowid). Each (cookie, week) pair is a row.
+CREATE_COOKIES_TABLE: Final[str] = """
+    CREATE TABLE IF NOT EXISTS cookies(
+        cookieId TEXT NOT NULL,
+        name TEXT NOT NULL,
+        description TEXT NOT NULL,
+        newAerialImage TEXT NOT NULL,
+        week TEXT NOT NULL
+    )
+"""
+
+DB_SCHEMA_VERSION: Final[int] = 2
 
 
 class DbManager:
@@ -94,6 +107,33 @@ class DbManager:
         self.cursor.execute(CREATE_WEEK_TABLE)
 
         # Commit the changes
+        self.connection.commit()
+
+    def migrate_cookies_to_cookies_table(self):
+        """
+        Upgrade to db schema version 2.
+
+        Creates the new 'cookies' table, migrates the cookie data that was stored
+        as a JSON blob in the week table's 'cookies' column into individual rows in
+        the new table, and then drops the now-unused 'cookies' column from the week
+        table.
+        """
+        LOGGER.w(TAG, "migrate_cookies_to_cookies_table(): migrating cookies to the cookies table")
+
+        # Create the new cookies table
+        self.cursor.execute(CREATE_COOKIES_TABLE)
+
+        # Migrate the existing cookie JSON blobs into individual rows
+        insert_query = "INSERT INTO cookies(cookieId, name, description, newAerialImage, week) VALUES(?, ?, ?, ?, ?)"
+        week_rows = self.cursor.execute("SELECT week, cookies FROM week").fetchall()
+        for week, cookies in week_rows:
+            for cookie in json.loads(cookies):
+                params = (cookie["cookieId"], cookie["name"], cookie["description"], cookie["newAerialImage"], week)
+                self.cursor.execute(insert_query, params)
+
+        # Drop the now-unused cookies column from the week table
+        self.cursor.execute("ALTER TABLE week DROP COLUMN cookies")
+
         self.connection.commit()
 
     def set_db_schema_version(self, version: int) -> bool:
@@ -150,7 +190,8 @@ class DbManager:
                 # The key is the db schema version being upgraded to.
                 # The value is the name of the upgrade function.
                 # Do not add parentheses, or it will get executed every time.
-                1: self.create_tables
+                1: self.create_tables,
+                2: self.migrate_cookies_to_cookies_table
             }
 
             upgrade.get(from_version + 1, lambda: None)()

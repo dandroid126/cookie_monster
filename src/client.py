@@ -58,7 +58,7 @@ async def get_cookies(interaction: discord.Interaction):
     channel_id = interaction.channel_id
     cookies = utils.get_cookies()
     for cookie in cookies:
-        message = f'{cookie["name"].strip()} - {cookie["description"].strip()}\n{cookie["newAerialImage"].strip()}\n\n'
+        message = f'{cookie.name.strip()} - {cookie.description.strip()}\n{cookie.newAerialImage.strip()}\n\n'
         await client.get_channel(channel_id).send(message)
     await interaction.followup.send("Done", ephemeral=True)
 

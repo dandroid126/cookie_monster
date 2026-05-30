@@ -7,6 +7,7 @@ from src import constants
 from src import utils
 from src.constants import LOGGER
 from src.db.db_manager import DbManager
+from src.db.cookie.cookie_dao import CookieDao
 from src.db.guild_channel_association.guild_channel_association_dao import GuildChannelAssociationDao
 from src.db.job.job_dao import JobDao
 from src.db.job.job_record import JobState, JobType
@@ -48,6 +49,7 @@ class JobExecutor:
         db_manager = DbManager(constants.DB_PATH)
         job_dao = JobDao(db_manager)
         week_dao = WeekDao(db_manager)
+        cookie_dao = CookieDao(db_manager)
         guild_channel_association_dao = GuildChannelAssociationDao(db_manager)
         JobExecutor.clean_up_in_progress_jobs(job_dao)
         while not SIGNAL_UTIL.is_interrupted and self.is_running:
@@ -60,12 +62,12 @@ class JobExecutor:
                 # Have a parent class with an execute method. Each job type should be a child class.
                 if job.type == JobType.POST_COOKIES:
                     try:
-                        cookies = utils.get_cookies(week_dao)
+                        cookies = utils.get_cookies(week_dao, cookie_dao)
                         guild_channel_associations = guild_channel_association_dao.get_all_guild_channel_associations()
                         for guild_channel_association in guild_channel_associations:
                             channel = self.client.get_channel(guild_channel_association.channel_id)
                             for cookie in cookies:
-                                message = f'{cookie["name"].strip()} - {cookie["description"].strip()}\n{cookie["newAerialImage"].strip()}\n\n'
+                                message = f'{cookie.name.strip()} - {cookie.description.strip()}\n{cookie.newAerialImage.strip()}\n\n'
                                 asyncio.run_coroutine_threadsafe(channel.send(message), loop).result()
                     except Exception as e:
                         LOGGER.e(TAG, f"Failed to post cookies: {e}")
