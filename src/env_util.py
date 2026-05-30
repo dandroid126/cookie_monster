@@ -16,8 +16,9 @@ class EnvUtil:
     _DAY_OF_WEEK = "DAY_OF_WEEK"
     _TIME = "TIME"
     _TIMEZONE = "TIMEZONE"
+    _BOT_MANAGER_USER_ID = "BOT_MANAGER_USER_ID"
 
-    _ENVIRONMENT_VARIABLE_NAMES = [_DISCORD_TOKEN, _DAY_OF_WEEK, _TIME, _TIMEZONE]
+    _ENVIRONMENT_VARIABLE_NAMES = [_DISCORD_TOKEN, _DAY_OF_WEEK, _TIME, _TIMEZONE, _BOT_MANAGER_USER_ID]
 
     def __init__(self, dotenv_path: Optional[str] = None):
         for environment_variable_name in self._ENVIRONMENT_VARIABLE_NAMES:
@@ -28,6 +29,7 @@ class EnvUtil:
         self.DAY_OF_WEEK = os.getenv('DAY_OF_WEEK')
         self.TIME = os.getenv('TIME')
         self.TIMEZONE = os.getenv('TIMEZONE')
+        self.BOT_MANAGER_USER_ID = os.getenv('BOT_MANAGER_USER_ID')
 
         if self.TOKEN is None:
             raise LoggedRuntimeError(TAG, "TOKEN not found. Check that .env file exists in src dir and that its contents are correct")
@@ -45,5 +47,9 @@ class EnvUtil:
             self.TIMEZONE = pytz.timezone(self.DEFAULT_TIMEZONE)
         else:
             self.TIMEZONE = pytz.timezone(self.TIMEZONE)
+        if self.BOT_MANAGER_USER_ID is None:
+            LOGGER.e(TAG, "BOT_MANAGER_USER_ID not found. The bot manager will not be notified when an error prevents cookies from being posted.")
+        else:
+            self.BOT_MANAGER_USER_ID = int(self.BOT_MANAGER_USER_ID)
 
 env_util = EnvUtil()
