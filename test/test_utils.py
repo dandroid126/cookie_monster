@@ -1,6 +1,6 @@
 import unittest
 from datetime import datetime, timedelta
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytz
 
@@ -19,7 +19,9 @@ class TestUtils(unittest.TestCase):
         for cookie in cookies:
             assert cookie.cookieId
             assert cookie.name
-            assert cookie.description
+            # A cookie's description may legitimately be empty (Crumbl sometimes returns null),
+            # so only assert it is a non-None string rather than truthy.
+            assert cookie.description is not None
             assert cookie.newAerialImage
             assert cookie.week
 
@@ -37,6 +39,32 @@ class TestUtils(unittest.TestCase):
         self.assertEqual(utils.get_previous_week(), utils.get_week(now - timedelta(weeks=1)))
         # ...and it should not equal the current week
         self.assertNotEqual(utils.get_previous_week(), utils.get_week())
+
+    @patch('src.utils.get_cookies_url', return_value="https://example.com/cookies.json")
+    @patch('src.utils.requests.get')
+    def test_fetch_cookies_defaults_null_description_to_empty_string(self, mock_get, _mock_url):
+        # Crumbl sometimes returns a rotating menu item with a null description.
+        mock_response = MagicMock()
+        mock_response.json.return_value = {
+            "pageProps": {
+                "products": {
+                    "rotatingMenu": {
+                        "items": [
+                            {"dessert": {"cookieId": "1", "name": "Has Description", "description": "yum", "newAerialImage": "image-1"}},
+                            {"dessert": {"cookieId": "2", "name": "No Description", "description": None, "newAerialImage": "image-2"}},
+                        ]
+                    }
+                }
+            }
+        }
+        mock_get.return_value = mock_response
+
+        _, cookies = utils.fetch_cookies("2025-1")
+
+        self.assertEqual(len(cookies), 2)
+        self.assertEqual(cookies[0].description, "yum")
+        # The null description should be coalesced to an empty string so it does not violate the NOT NULL constraint.
+        self.assertEqual(cookies[1].description, "")
 
     def test_are_cookies_same(self):
         def cookie(cookie_id, week):

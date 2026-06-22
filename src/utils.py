@@ -93,7 +93,7 @@ def fetch_cookies(week: str) -> tuple[str, list[CookieRecord]]:
     r = requests.get(url)
     items = r.json()["pageProps"]["products"]["rotatingMenu"]["items"]
     cookies = [
-        CookieRecord(dessert["cookieId"], dessert["name"], dessert["description"], dessert["newAerialImage"], week)
+        CookieRecord(dessert["cookieId"], dessert["name"], dessert["description"] or "", dessert["newAerialImage"], week)
         for dessert in (item["dessert"] for item in items)
     ]
     return url, cookies
